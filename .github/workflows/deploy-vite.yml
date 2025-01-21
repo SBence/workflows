@@ -1,0 +1,51 @@
+name: Deploy Vite project to Pages
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Node.js environment
+        uses: SBence/setup-node-workflow-yarn@master
+        with:
+          node-version: "*"
+
+      - name: Set up Pages
+        uses: actions/configure-pages@v5
+        id: pages
+
+      - name: Build project
+        run: yarn run build --outDir dist-ci --base=${{ steps.pages.outputs.base_path }}
+        env:
+          PUBLIC_URL: ${{ steps.pages.outputs.base_url }}
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist-ci
+
+  deploy:
+    needs: build
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
