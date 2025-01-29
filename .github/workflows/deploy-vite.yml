@@ -2,39 +2,51 @@ name: Deploy Vite project to Pages
 
 on:
   workflow_call:
+    inputs:
+      node-version:
+        type: string
+        description: "Version Spec of the Node.js version to use. Examples: 12.x, 10.15.1, >=10.15.0."
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
-concurrency:
-  group: pages
-  cancel-in-progress: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      BUILD_PATH: "dist-ci"
+
     steps:
       - name: Set up Node.js environment
-        uses: SBence/setup-node-workflow-yarn@master
+        uses: SBence/setup-node-workflow@master
+        id: setup-node
         with:
-          node-version: "*"
+          node-version: ${{ inputs.node-version }}
 
       - name: Set up Pages
         uses: actions/configure-pages@v5
         id: pages
 
       - name: Build project
-        run: yarn run build --outDir dist-ci --base=${{ steps.pages.outputs.base_path }}
+        run: |
+          if [ "${{ steps.setup-node.outputs.package-manager }}" == "npm" ]; then
+            npm run build -- --outDir ${{ env.BUILD_PATH }} --base ${{ steps.pages.outputs.base_path }}
+          elif [ "${{ steps.setup-node.outputs.package-manager }}" == "yarn" ]; then
+            yarn run build --outDir ${{ env.BUILD_PATH }} --base ${{ steps.pages.outputs.base_path }}
+          else
+            echo "Error: Unsupported package manager: ${{ steps.setup-node.outputs.package-manager }}"
+            exit 1
+          fi
         env:
           PUBLIC_URL: ${{ steps.pages.outputs.base_url }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist-ci
+          path: ./${{ env.BUILD_PATH }}
 
   deploy:
     needs: build
