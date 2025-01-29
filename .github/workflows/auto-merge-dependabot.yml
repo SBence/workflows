@@ -1,4 +1,4 @@
-name: Auto-merge Dependabot updates
+name: Enable auto-merge for Dependabot pull request
 
 on:
   workflow_call:
@@ -6,7 +6,7 @@ on:
 jobs:
   enable-auto-merge:
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
 
     steps:
       - name: Fetch metadata
